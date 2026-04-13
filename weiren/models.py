@@ -270,6 +270,31 @@ class SearchHistory(SQLModel, table=True):
     created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False, index=True))
 
 
+class ChatSession(SQLModel, table=True):
+    __tablename__ = "chat_sessions"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    subject_name: str = Field(default="她", index=True, max_length=100)
+    title: str = Field(default="新对话", max_length=160)
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False, index=True))
+    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False, index=True))
+
+
+class ChatMessage(SQLModel, table=True):
+    __tablename__ = "chat_messages"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_id: int = Field(
+        sa_column=Column(Integer, ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    )
+    role: str = Field(index=True, max_length=16)
+    content: str = Field(sa_column=Column(Text, nullable=False))
+    intent: Optional[str] = Field(default=None, index=True, max_length=64)
+    confidence: Optional[str] = Field(default=None, max_length=16)
+    evidence_json: str = Field(default="[]", sa_column=Column(Text, nullable=False))
+    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False, index=True))
+
+
 class AppSetting(SQLModel, table=True):
     __tablename__ = "app_settings"
 

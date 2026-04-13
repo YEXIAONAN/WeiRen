@@ -9,13 +9,14 @@ from urllib.parse import urlencode
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, File, Form, Request, UploadFile
-from fastapi.responses import FileResponse, RedirectResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlmodel import Session, func, select
 
 from weiren.config import settings
 from weiren.db import get_session
 from weiren.models import (
+    ChatSession,
     DedupeCandidate,
     ExportRecord,
     Memory,
@@ -27,6 +28,7 @@ from weiren.models import (
     TimelineEvent,
     Trait,
 )
+from weiren.services.chat_service import ChatService
 from weiren.services.dedupe_service import DedupeService
 from weiren.services.evidence_service import EvidenceService
 from weiren.services.export_service import ExportService
@@ -50,6 +52,7 @@ evidence_service = EvidenceService()
 review_service = ReviewService()
 dedupe_service = DedupeService()
 export_service = ExportService()
+chat_service = ChatService()
 
 
 @dataclass(slots=True)
@@ -311,6 +314,89 @@ async def search_save(request: Request, session: Session = Depends(get_session))
     if end_date:
         params["end_date"] = end_date.isoformat()
     return RedirectResponse(url=f"/search?{urlencode(params)}", status_code=303)
+
+
+@router.get("/chat")
+def chat_page(
+    request: Request,
+    session_id: Optional[int] = None,
+    new: int = 0,
+    subject_name: Optional[str] = None,
+    session: Session = Depends(get_session),
+) -> object:
+    if new or session_id is None:
+        chat_session = chat_service.ensure_session(session, subject_name=subject_name)
+        return RedirectResponse(url=f"/chat?session_id={chat_session.id}", status_code=303)
+
+    chat_session = chat_service.ensure_session(session, session_id=session_id, subject_name=subject_name)
+    if chat_session.id != session_id:
+        return RedirectResponse(url=f"/chat?session_id={chat_session.id}", status_code=303)
+
+    messages = chat_service.list_messages(session, chat_session.id or 0)
+    return templates.TemplateResponse(
+        "chat.html",
+        {
+            "request": request,
+            "app_title": settings.app_title,
+            "subject_name": chat_session.subject_name,
+            "chat_session": chat_session,
+            "messages": messages,
+            "loads_json": loads_json,
+            "suggested_questions": [
+                "她喜欢吃什么？",
+                "她最常说的话有哪些？",
+                "我们在某段时间发生了什么？",
+                "她平时是什么样的人？",
+            ],
+        },
+    )
+
+
+@router.post("/api/chat")
+async def chat_api(request: Request, session: Session = Depends(get_session)) -> JSONResponse:
+    payload = await request.json()
+    question = str(payload.get("question") or "").strip()
+    subject_name = str(payload.get("subject_name") or "").strip() or chat_service.default_subject_name(session)
+    raw_session_id = payload.get("session_id")
+    session_id = int(raw_session_id) if raw_session_id not in {None, ""} else None
+    chat_session = chat_service.ensure_session(session, session_id=session_id, subject_name=subject_name)
+
+    if not question:
+        return JSONResponse({"error": "问题不能为空。"}, status_code=400)
+
+    reply = chat_service.answer(session, question=question, subject_name=chat_session.subject_name)
+    chat_service.append_exchange(session, chat_session, question=question, reply=reply)
+
+    return JSONResponse(
+        {
+            "session_id": chat_session.id,
+            "answer": reply.answer,
+            "intent": reply.intent,
+            "confidence": reply.confidence,
+            "evidence": [
+                {
+                    "source_name": item.source_name,
+                    "source_type": item.source_type,
+                    "snippet": item.snippet,
+                    "date": item.date,
+                    "similarity": item.similarity,
+                    "keywords": item.keywords,
+                }
+                for item in reply.evidence
+            ],
+        }
+    )
+
+
+@router.post("/api/chat/clear")
+async def chat_clear_api(request: Request, session: Session = Depends(get_session)) -> JSONResponse:
+    payload = await request.json()
+    raw_session_id = payload.get("session_id")
+    session_id = int(raw_session_id) if raw_session_id not in {None, ""} else None
+    if session_id is None:
+        return JSONResponse({"error": "缺少 session_id。"}, status_code=400)
+    chat_service.clear_session(session, session_id)
+    return JSONResponse({"ok": True, "session_id": session_id})
 
 
 @router.get("/qa")

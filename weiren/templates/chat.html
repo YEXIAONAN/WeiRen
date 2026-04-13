@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ app_title }} / 对话</title>
+  <link rel="stylesheet" href="/static/css/tailwind.css">
+  <script defer src="/static/js/chat.js"></script>
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: #0b0b0c;
+      color: #f3f4f6;
+      font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    .chat-shell {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: #0b0b0c;
+    }
+
+    .chat-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid #26282d;
+      background: #0b0b0c;
+    }
+
+    .chat-brand {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .chat-brand-mark {
+      font-size: 1.3rem;
+      font-weight: 600;
+      letter-spacing: 0.18em;
+      color: #f3f4f6;
+      text-decoration: none;
+    }
+
+    .chat-brand-copy {
+      font-size: 0.88rem;
+      color: #9ca3af;
+    }
+
+    .chat-top-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+    }
+
+    .chat-top-link,
+    .chat-top-button,
+    .chat-send {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #26282d;
+      background: #121214;
+      color: #f3f4f6;
+      text-decoration: none;
+      padding: 0.72rem 1rem;
+      font-size: 0.92rem;
+      border-radius: 0.9rem;
+      cursor: pointer;
+      transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+    }
+
+    .chat-top-link:hover,
+    .chat-top-button:hover,
+    .chat-send:hover {
+      background: #17181b;
+      border-color: #34373d;
+      transform: translateY(-1px);
+    }
+
+    .chat-send {
+      border-color: #7a1f1f;
+      background: #151518;
+      min-width: 5.5rem;
+    }
+
+    .chat-main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      max-width: 980px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 0 1rem 1rem;
+      box-sizing: border-box;
+    }
+
+    .chat-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 1.5rem 0 1rem;
+      scroll-behavior: smooth;
+    }
+
+    .chat-empty {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1rem;
+      padding: 2.5rem 0 4rem;
+    }
+
+    .chat-empty h1 {
+      margin: 0;
+      font-size: 2rem;
+      font-weight: 600;
+      color: #f3f4f6;
+    }
+
+    .chat-empty p {
+      margin: 0;
+      max-width: 40rem;
+      line-height: 1.8;
+      color: #9ca3af;
+    }
+
+    .chat-suggestions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.85rem;
+      margin-top: 0.5rem;
+    }
+
+    .chat-suggestion {
+      text-align: left;
+      border: 1px solid #26282d;
+      background: #121214;
+      color: #d1d5db;
+      padding: 1rem 1rem;
+      border-radius: 1rem;
+      cursor: pointer;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      transition: background-color 140ms ease, border-color 140ms ease, transform 140ms ease;
+    }
+
+    .chat-suggestion:hover {
+      background: #17181b;
+      border-color: #34373d;
+      transform: translateY(-1px);
+    }
+
+    .chat-list {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+
+    .chat-row {
+      display: flex;
+      width: 100%;
+    }
+
+    .chat-row-user {
+      justify-content: flex-end;
+    }
+
+    .chat-row-system {
+      justify-content: flex-start;
+    }
+
+    .chat-bubble {
+      max-width: min(720px, 86%);
+      border: 1px solid #26282d;
+      background: #121214;
+      padding: 1rem 1rem;
+      border-radius: 0.95rem;
+      white-space: pre-wrap;
+      line-height: 1.8;
+      box-sizing: border-box;
+    }
+
+    .chat-row-user .chat-bubble {
+      background: #141518;
+    }
+
+    .chat-meta {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.75rem;
+      margin-bottom: 0.5rem;
+      font-size: 0.78rem;
+      color: #9ca3af;
+    }
+
+    .chat-answer {
+      color: #f3f4f6;
+      font-size: 0.98rem;
+    }
+
+    .chat-evidence-toggle {
+      margin-top: 0.8rem;
+      border: none;
+      background: none;
+      color: #9ca3af;
+      padding: 0;
+      font-size: 0.84rem;
+      cursor: pointer;
+    }
+
+    .chat-evidence-toggle:hover {
+      color: #f3f4f6;
+    }
+
+    .chat-evidence-list {
+      margin-top: 0.9rem;
+      display: none;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .chat-evidence-list.is-open {
+      display: flex;
+    }
+
+    .chat-evidence-item {
+      border-top: 1px solid #26282d;
+      padding-top: 0.75rem;
+    }
+
+    .chat-evidence-title {
+      font-size: 0.84rem;
+      color: #d1d5db;
+      margin-bottom: 0.35rem;
+    }
+
+    .chat-evidence-snippet {
+      font-size: 0.88rem;
+      line-height: 1.7;
+      color: #9ca3af;
+      white-space: pre-wrap;
+    }
+
+    .chat-composer {
+      position: sticky;
+      bottom: 0;
+      padding: 0.9rem 0 0.2rem;
+      background: linear-gradient(to top, #0b0b0c 78%, rgba(11, 11, 12, 0));
+    }
+
+    .chat-input-shell {
+      border: 1px solid #26282d;
+      background: #121214;
+      border-radius: 1rem;
+      padding: 0.9rem;
+    }
+
+    .chat-input {
+      width: 100%;
+      min-height: 4.2rem;
+      max-height: 12rem;
+      resize: vertical;
+      border: none;
+      outline: none;
+      background: #141518;
+      color: #f3f4f6;
+      padding: 0.9rem 1rem;
+      box-sizing: border-box;
+      border-radius: 0.9rem;
+      font-size: 0.96rem;
+      line-height: 1.7;
+    }
+
+    .chat-input::placeholder {
+      color: #6b7280;
+    }
+
+    .chat-input-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      margin-top: 0.9rem;
+      flex-wrap: wrap;
+    }
+
+    .chat-hint {
+      font-size: 0.82rem;
+      color: #9ca3af;
+    }
+
+    .chat-action-group {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+    }
+
+    .chat-clear {
+      border: 1px solid #26282d;
+      background: #121214;
+      color: #d1d5db;
+      padding: 0.72rem 1rem;
+      border-radius: 0.9rem;
+      cursor: pointer;
+    }
+
+    .chat-clear:disabled,
+    .chat-send:disabled,
+    .chat-top-button:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    @media (max-width: 720px) {
+      .chat-topbar {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+
+      .chat-suggestions {
+        grid-template-columns: 1fr;
+      }
+
+      .chat-bubble {
+        max-width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div
+    class="chat-shell"
+    id="chat-app"
+    data-session-id="{{ chat_session.id }}"
+    data-subject-name="{{ subject_name }}"
+  >
+    <header class="chat-topbar">
+      <div class="chat-brand">
+        <a href="/chat?session_id={{ chat_session.id }}" class="chat-brand-mark">{{ app_title }}</a>
+        <p class="chat-brand-copy">基于本地资料的检索式对话</p>
+      </div>
+      <div class="chat-top-actions">
+        <a href="/" class="chat-top-link">返回工作台</a>
+        <a href="/chat?new=1&subject_name={{ subject_name }}" class="chat-top-link">新建对话</a>
+      </div>
+    </header>
+
+    <main class="chat-main">
+      <div class="chat-scroll" id="chat-scroll">
+        <section class="chat-empty" id="chat-empty" {% if messages %}style="display:none"{% endif %}>
+          <h1>基于已有资料开始提问。</h1>
+          <p>这里不会调用任何模型。回答只来自本地资料、规则问答和检索结果，资料不足时会直接说明。</p>
+          <div class="chat-suggestions">
+            {% for item in suggested_questions %}
+            <button type="button" class="chat-suggestion" data-suggest="{{ item }}">{{ item }}</button>
+            {% endfor %}
+          </div>
+        </section>
+
+        <section class="chat-list" id="chat-list">
+          {% for message in messages %}
+          <article class="chat-row {% if message.role == 'user' %}chat-row-user{% else %}chat-row-system{% endif %}">
+            <div class="chat-bubble">
+              <div class="chat-meta">
+                <span>{% if message.role == 'user' %}你{% else %}系统{% endif %}</span>
+                {% if message.role == 'system' and message.confidence %}
+                <span>{{ message.intent or 'reply' }} / {{ message.confidence }}</span>
+                {% else %}
+                <span>{{ message.created_at.strftime('%H:%M') }}</span>
+                {% endif %}
+              </div>
+              <div class="chat-answer">{{ message.content }}</div>
+              {% if message.role == 'system' %}
+              {% set evidence_items = loads_json(message.evidence_json, []) %}
+              <button type="button" class="chat-evidence-toggle" {% if not evidence_items %}style="display:none"{% endif %}>查看依据</button>
+              <div class="chat-evidence-list">
+                {% for item in evidence_items %}
+                <div class="chat-evidence-item">
+                  <div class="chat-evidence-title">{{ item.source_name }} / {{ item.source_type }}{% if item.date %} / {{ item.date }}{% endif %}</div>
+                  <div class="chat-evidence-snippet">{{ item.snippet }}</div>
+                  {% if item.similarity or item.keywords %}
+                  <div class="chat-evidence-snippet">{% if item.similarity %}相似度 {{ '%.1f'|format(item.similarity) }}{% endif %}{% if item.keywords %}{% if item.similarity %} / {% endif %}关键词 {{ item.keywords|join('、') }}{% endif %}</div>
+                  {% endif %}
+                </div>
+                {% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </article>
+          {% endfor %}
+        </section>
+      </div>
+
+      <section class="chat-composer">
+        <div class="chat-input-shell">
+          <textarea id="chat-input" class="chat-input" rows="3" placeholder="输入问题，按 Enter 发送，Shift + Enter 换行"></textarea>
+          <div class="chat-input-actions">
+            <div class="chat-hint">回答仅基于本地资料，不会虚构。</div>
+            <div class="chat-action-group">
+              <button type="button" id="chat-clear" class="chat-clear">清空当前会话</button>
+              <button type="button" id="chat-send" class="chat-send">发送</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
