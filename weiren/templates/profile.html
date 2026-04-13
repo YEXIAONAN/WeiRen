@@ -1,0 +1,148 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="section-heading-row">
+  <div>
+    <p class="section-kicker">人物资料</p>
+    <h1 class="hero-title text-2xl lg:text-3xl">{{ active_person }}</h1>
+  </div>
+  <form method="get" class="flex flex-wrap gap-3">
+    <select name="person" class="input min-w-48">
+      {% for name in subject_names %}
+      <option value="{{ name }}" {% if name == active_person %}selected{% endif %}>{{ name }}</option>
+      {% endfor %}
+    </select>
+    <button class="button-primary" type="submit">切换</button>
+  </form>
+</section>
+
+<section class="content-grid-two">
+  <article class="panel panel-compact">
+    <div class="section-heading-row">
+      <p class="section-title">人物特征</p>
+      <a href="/review?entity_type=trait&person={{ active_person }}" class="section-link">前往校正</a>
+    </div>
+    <div class="entry-list">
+      {% for item in trait_items %}
+      <div class="entry-row">
+        <div class="entry-main">
+          <p class="entry-title">{{ item.trait }}</p>
+          <p class="entry-summary">{{ display_text(item.evidence, item.masked_content) }}</p>
+        </div>
+        <div class="action-stack">
+          <span class="tag {% if item.is_low_confidence %}tag-danger{% endif %}">{% if item.is_confirmed %}已确认{% else %}待确认{% endif %}</span>
+          <a href="/evidence/trait/{{ item.id }}" class="section-link">查看证据</a>
+        </div>
+      </div>
+      {% else %}
+      <p class="empty-copy">暂无特征记录。</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel panel-compact">
+    <div class="section-heading-row">
+      <p class="section-title">偏好厌恶</p>
+      <a href="/review?entity_type=preference&person={{ active_person }}" class="section-link">前往校正</a>
+    </div>
+    <div class="split-list mt-4">
+      <div>
+        <p class="section-note">喜欢</p>
+        <div class="entry-list">
+          {% for item in like_items %}
+          <div class="entry-row">
+            <div class="entry-main">
+              <p class="entry-title">{{ item.item }}</p>
+              <p class="entry-summary">{{ display_text(item.evidence, item.masked_content) }}</p>
+            </div>
+            <a href="/evidence/preference/{{ item.id }}" class="section-link">查看证据</a>
+          </div>
+          {% else %}
+          <p class="empty-copy">暂无。</p>
+          {% endfor %}
+        </div>
+      </div>
+      <div>
+        <p class="section-note">不喜欢</p>
+        <div class="entry-list">
+          {% for item in dislike_items %}
+          <div class="entry-row">
+            <div class="entry-main">
+              <p class="entry-title">{{ item.item }}</p>
+              <p class="entry-summary">{{ display_text(item.evidence, item.masked_content) }}</p>
+            </div>
+            <a href="/evidence/preference/{{ item.id }}" class="section-link">查看证据</a>
+          </div>
+          {% else %}
+          <p class="empty-copy">暂无。</p>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </article>
+</section>
+
+<section class="content-grid-two">
+  <article class="panel panel-compact">
+    <div class="section-heading-row">
+      <p class="section-title">典型原话</p>
+      <a href="/review?entity_type=quote&person={{ active_person }}" class="section-link">前往校正</a>
+    </div>
+    <div class="entry-list">
+      {% for quote in quotes %}
+      <div class="entry-row">
+        <div class="entry-main">
+          <p class="entry-title">{{ quote.speaker or active_person }}</p>
+          <p class="entry-summary">{{ display_text(quote.content, quote.masked_content) }}</p>
+          <p class="entry-meta">{{ format_datetime(quote.occurred_at) }}</p>
+        </div>
+        <a href="/evidence/quote/{{ quote.id }}" class="section-link">查看证据</a>
+      </div>
+      {% else %}
+      <p class="empty-copy">暂无原话。</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel panel-compact">
+    <div class="section-heading-row">
+      <p class="section-title">共同记忆</p>
+      <a href="/review?entity_type=memory&person={{ active_person }}" class="section-link">前往校正</a>
+    </div>
+    <div class="entry-list">
+      {% for memory in memories %}
+      <div class="entry-row">
+        <div class="entry-main">
+          <p class="entry-title">{{ memory.title }}</p>
+          <p class="entry-summary">{{ display_text(memory.content, memory.masked_content) }}</p>
+          <p class="entry-meta">{{ format_datetime(memory.event_time or memory.occurred_at) }}</p>
+        </div>
+        <a href="/evidence/memory/{{ memory.id }}" class="section-link">查看证据</a>
+      </div>
+      {% else %}
+      <p class="empty-copy">暂无共同记忆。</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="panel panel-compact">
+  <div class="section-heading-row">
+    <p class="section-title">最近时间线</p>
+    <a href="/timeline?person={{ active_person }}" class="section-link">查看全部</a>
+  </div>
+  <div class="entry-list">
+    {% for event in timeline %}
+    <div class="entry-row">
+      <div class="entry-main">
+        <p class="entry-title">{{ event.title }}</p>
+        <p class="entry-summary">{{ display_text(event.content, event.masked_content) }}</p>
+        <p class="entry-meta">{{ format_date(event.event_date) }}</p>
+      </div>
+      <a href="/evidence/timeline/{{ event.id }}" class="section-link">查看证据</a>
+    </div>
+    {% else %}
+    <p class="empty-copy">暂无时间线事件。</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

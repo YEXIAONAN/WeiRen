@@ -1,0 +1,115 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="hero-grid">
+  <article class="hero-copy">
+    <p class="section-kicker">伪人 / 本地档案系统</p>
+    <h1 class="hero-title">把零散记录整理成可检索、可追溯的人物档案。</h1>
+    <p class="hero-summary">
+      不生成，不推测，只保留来源明确的片段、记忆与原话。首页只显示当前最重要的入口和最近变化。
+    </p>
+    <div class="hero-actions">
+      <a href="/import" class="button-primary">导入资料</a>
+      <a href="/search" class="button-secondary">开始检索</a>
+    </div>
+  </article>
+
+  <aside class="stats-card">
+    <div class="section-heading-row">
+      <p class="section-title">数据总览</p>
+      <span class="section-note">当前库</span>
+    </div>
+    <div class="stats-grid">
+      <div class="stat-box">
+        <p class="stat-value">{{ stats.sources }}</p>
+        <p class="stat-label">已导入来源</p>
+      </div>
+      <div class="stat-box">
+        <p class="stat-value">{{ stats.messages }}</p>
+        <p class="stat-label">原始片段</p>
+      </div>
+      <div class="stat-box">
+        <p class="stat-value">{{ stats.memories }}</p>
+        <p class="stat-label">共同记忆</p>
+      </div>
+      <div class="stat-box">
+        <p class="stat-value">{{ stats.quotes }}</p>
+        <p class="stat-label">典型原话</p>
+      </div>
+    </div>
+  </aside>
+</section>
+
+<section class="content-grid-two">
+  <article class="panel panel-compact">
+    <div class="section-heading-row">
+      <p class="section-title">最近导入</p>
+      <a href="/import" class="section-link">查看全部</a>
+    </div>
+    <div class="entry-list">
+      {% for source in recent_sources %}
+      <div class="entry-row">
+        <div class="entry-main">
+          <p class="entry-title">{{ source.filename }}</p>
+          <p class="entry-meta">{{ source.subject_name }} / {{ source.source_type }} / {{ format_datetime(source.imported_at) }}</p>
+        </div>
+        <p class="entry-summary">{{ source.summary or '已导入来源记录。' }}</p>
+      </div>
+      {% else %}
+      <p class="empty-copy">还没有导入任何资料。</p>
+      {% endfor %}
+    </div>
+  </article>
+
+  <article class="panel panel-compact">
+    <div class="section-heading-row">
+      <p class="section-title">最近时间线</p>
+      <a href="/timeline" class="section-link">查看全部</a>
+    </div>
+    <div class="entry-list">
+      {% for event in recent_events %}
+      <div class="entry-row">
+        <div class="entry-main">
+          <p class="entry-title">{{ event.title }}</p>
+          <p class="entry-meta">{{ event.person_name }} / {{ format_date(event.event_date) }}</p>
+        </div>
+        <p class="entry-summary">{{ event.content }}</p>
+      </div>
+      {% else %}
+      <p class="empty-copy">时间线里还没有可展示的事件。</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+
+<section class="feature-grid">
+  <article class="feature-card">
+    <p class="feature-kicker">检索</p>
+    <h2 class="feature-title">资料检索</h2>
+    <p class="feature-copy">按关键词、来源和时间范围快速定位消息、记忆与原话。</p>
+    <a href="/search" class="feature-link">进入搜索</a>
+  </article>
+
+  <article class="feature-card">
+    <p class="feature-kicker">问答</p>
+    <h2 class="feature-title">固定问答</h2>
+    <p class="feature-copy">基于规则、全文检索和相似句匹配生成可追溯回答。</p>
+    <a href="/qa" class="feature-link">开始提问</a>
+  </article>
+
+  <article class="feature-card">
+    <p class="feature-kicker">档案</p>
+    <h2 class="feature-title">人物资料</h2>
+    <p class="feature-copy">查看偏好、特征、共同记忆与最近时间线，形成稳定资料卡。</p>
+    <a href="/profile" class="feature-link">查看资料</a>
+  </article>
+</section>
+
+<section class="panel panel-muted home-principles">
+  <p class="section-title">系统原则</p>
+  <div class="principle-list">
+    <p>只使用本地 SQLite、FTS5、RapidFuzz 与规则抽取。</p>
+    <p>所有回答必须能回溯到已存入数据库的证据来源。</p>
+    <p>删除原始来源时，关联数据与索引一并同步清理。</p>
+  </div>
+</section>
+{% endblock %}

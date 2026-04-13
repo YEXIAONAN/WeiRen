@@ -1,0 +1,69 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="panel">
+  <div class="section-heading-row">
+    <div>
+      <p class="section-kicker">重复识别与合并</p>
+      <h1 class="hero-title text-2xl lg:text-3xl">待合并列表</h1>
+    </div>
+    <form method="post" action="/dedupe/scan">
+      <button class="button-primary" type="submit">重新扫描</button>
+    </form>
+  </div>
+</section>
+
+<section class="entry-list">
+  {% for view in candidate_views %}
+  <article class="panel panel-compact">
+    <div class="section-heading-row">
+      <p class="section-title">{{ view.candidate.entity_type }} / 相似度 {{ '%.1f'|format(view.candidate.similarity_score) }}</p>
+      <p class="section-note">#{{ view.candidate.left_entity_id }} vs #{{ view.candidate.right_entity_id }}</p>
+    </div>
+
+    <div class="split-list mt-4">
+      <div class="entry-row">
+        <div class="entry-main">
+          <p class="entry-title">左侧：{{ view.left_title }}</p>
+          <p class="entry-summary">{{ display_text(view.left_content, view.left_record.masked_content if view.left_record.masked_content is defined else None) }}</p>
+        </div>
+      </div>
+      <div class="entry-row">
+        <div class="entry-main">
+          <p class="entry-title">右侧：{{ view.right_title }}</p>
+          <p class="entry-summary">{{ display_text(view.right_content, view.right_record.masked_content if view.right_record.masked_content is defined else None) }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="action-row mt-4">
+      <form method="post" action="/dedupe/keep/{{ view.candidate.id }}">
+        <input type="hidden" name="keep_side" value="left">
+        <button class="button-secondary" type="submit">保留左侧</button>
+      </form>
+      <form method="post" action="/dedupe/keep/{{ view.candidate.id }}">
+        <input type="hidden" name="keep_side" value="right">
+        <button class="button-secondary" type="submit">保留右侧</button>
+      </form>
+      <form method="post" action="/dedupe/ignore/{{ view.candidate.id }}">
+        <button class="button-danger" type="submit">忽略</button>
+      </form>
+    </div>
+
+    <form method="post" action="/dedupe/merge/{{ view.candidate.id }}" class="mt-5 space-y-3">
+      <label class="field">
+        <span>合并标题</span>
+        <input class="input" type="text" name="merged_title" value="{{ view.left_title }}">
+      </label>
+      <label class="field">
+        <span>合并内容</span>
+        <textarea class="input" name="merged_content" rows="5">{{ view.left_content }}
+{{ view.right_content }}</textarea>
+      </label>
+      <button class="button-primary" type="submit">合并两条</button>
+    </form>
+  </article>
+  {% else %}
+  <p class="empty-copy">当前没有待处理的重复候选项。</p>
+  {% endfor %}
+</section>
+{% endblock %}

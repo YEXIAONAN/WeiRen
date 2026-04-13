@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="panel">
+  <div class="section-heading-row">
+    <div>
+      <p class="section-kicker">手工校正台</p>
+      <h1 class="hero-title text-2xl lg:text-3xl">{{ active_entity_type }}</h1>
+    </div>
+    <form method="get" class="grid gap-3 md:grid-cols-3">
+      <select name="entity_type" class="input">
+        {% for item in entity_types %}
+        <option value="{{ item }}" {% if item == active_entity_type %}selected{% endif %}>{{ item }}</option>
+        {% endfor %}
+      </select>
+      <select name="person" class="input">
+        <option value="">全部人物</option>
+        {% for name in subject_names %}
+        <option value="{{ name }}" {% if name == active_person %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+      <button class="button-primary" type="submit">筛选</button>
+    </form>
+  </div>
+</section>
+
+<section class="entry-list">
+  {% for item in records %}
+  <article class="panel panel-compact">
+    <form method="post" action="/review/update/{{ active_entity_type }}/{{ item.id }}" class="space-y-4">
+      <input type="hidden" name="redirect_entity_type" value="{{ active_entity_type }}">
+      <input type="hidden" name="redirect_person" value="{{ active_person }}">
+      <div class="section-heading-row">
+        <p class="section-title">记录 #{{ item.id }}</p>
+        <a href="/evidence/{{ active_entity_type }}/{{ item.id }}" class="section-link">查看证据</a>
+      </div>
+
+      {% if active_entity_type == 'trait' %}
+      <label class="field">
+        <span>Trait</span>
+        <input class="input" type="text" name="trait" value="{{ item.trait }}">
+      </label>
+      <label class="field">
+        <span>Evidence</span>
+        <textarea class="input" name="evidence" rows="4">{{ item.evidence }}</textarea>
+      </label>
+      {% elif active_entity_type == 'preference' %}
+      <div class="split-list">
+        <label class="field">
+          <span>Item</span>
+          <input class="input" type="text" name="item" value="{{ item.item }}">
+        </label>
+        <label class="field">
+          <span>Category</span>
+          <input class="input" type="text" name="category" value="{{ item.category }}">
+        </label>
+      </div>
+      <label class="field">
+        <span>Polarity</span>
+        <select class="input" name="polarity">
+          <option value="like" {% if item.polarity == 'like' %}selected{% endif %}>like</option>
+          <option value="dislike" {% if item.polarity == 'dislike' %}selected{% endif %}>dislike</option>
+        </select>
+      </label>
+      <label class="field">
+        <span>Evidence</span>
+        <textarea class="input" name="evidence" rows="4">{{ item.evidence }}</textarea>
+      </label>
+      {% elif active_entity_type == 'memory' %}
+      <label class="field">
+        <span>Title</span>
+        <input class="input" type="text" name="title" value="{{ item.title }}">
+      </label>
+      <label class="field">
+        <span>Content</span>
+        <textarea class="input" name="content" rows="5">{{ item.content }}</textarea>
+      </label>
+      <label class="field">
+        <span>Event Time</span>
+        <input class="input" type="datetime-local" name="event_time" value="{{ item.event_time.strftime('%Y-%m-%dT%H:%M') if item.event_time else '' }}">
+      </label>
+      {% elif active_entity_type == 'quote' %}
+      <label class="field">
+        <span>Content</span>
+        <textarea class="input" name="content" rows="5">{{ item.content }}</textarea>
+      </label>
+      <label class="field">
+        <span>Tags</span>
+        <input class="input" type="text" name="tags_json" value="{{ loads_json(item.tags_json, [])|join(', ') }}">
+      </label>
+      {% elif active_entity_type == 'timeline' %}
+      <label class="field">
+        <span>Title</span>
+        <input class="input" type="text" name="title" value="{{ item.title }}">
+      </label>
+      <label class="field">
+        <span>Description</span>
+        <textarea class="input" name="content" rows="5">{{ item.content }}</textarea>
+      </label>
+      <label class="field">
+        <span>Date</span>
+        <input class="input" type="date" name="event_date" value="{{ item.event_date.isoformat() if item.event_date else '' }}">
+      </label>
+      {% endif %}
+
+      <div class="toggle-row">
+        <label><input type="checkbox" name="is_confirmed" {% if item.is_confirmed %}checked{% endif %}> 已确认</label>
+        <label><input type="checkbox" name="is_low_confidence" {% if item.is_low_confidence %}checked{% endif %}> 低可信</label>
+      </div>
+
+      <div class="action-row">
+        <button class="button-primary" type="submit">保存修改</button>
+      </div>
+    </form>
+
+    <form method="post" action="/review/delete/{{ active_entity_type }}/{{ item.id }}" class="mt-4">
+      <input type="hidden" name="redirect_entity_type" value="{{ active_entity_type }}">
+      <input type="hidden" name="redirect_person" value="{{ active_person }}">
+      <button class="button-danger" type="submit">删除此条</button>
+    </form>
+  </article>
+  {% else %}
+  <p class="empty-copy">当前筛选条件下没有可校正的数据。</p>
+  {% endfor %}
+</section>
+{% endblock %}

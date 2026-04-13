@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="panel">
+  <div class="section-heading-row">
+    <div>
+      <p class="section-kicker">时间线</p>
+      <h1 class="hero-title text-2xl lg:text-3xl">{{ active_person }}</h1>
+    </div>
+    <form method="get" class="grid gap-3 md:grid-cols-4">
+      <select name="person" class="input">
+        {% for name in subject_names %}
+        <option value="{{ name }}" {% if name == active_person %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+      <input class="input" type="date" name="start_date" value="{{ start_date }}">
+      <input class="input" type="date" name="end_date" value="{{ end_date }}">
+      <button class="button-primary" type="submit">筛选</button>
+    </form>
+  </div>
+
+  <div class="entry-list mt-6">
+    {% for event in events %}
+    <div class="entry-row">
+      <div class="entry-main">
+        <p class="entry-title">{{ event.title }}</p>
+        <p class="entry-summary">{{ display_text(event.content, event.masked_content) }}</p>
+        <p class="entry-meta">{{ format_date(event.event_date) }} / {% if event.is_confirmed %}已确认{% else %}待确认{% endif %}</p>
+      </div>
+      <div class="action-stack">
+        <a href="/evidence/timeline/{{ event.id }}" class="section-link">查看证据</a>
+        <a href="/review?entity_type=timeline&person={{ active_person }}" class="section-link">前往校正</a>
+      </div>
+    </div>
+    {% else %}
+    <p class="empty-copy">当前条件下没有事件。</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

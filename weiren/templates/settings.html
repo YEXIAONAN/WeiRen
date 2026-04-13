@@ -1,0 +1,32 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="panel">
+  <div class="section-heading-row">
+    <div>
+      <p class="section-kicker">隐私保护与演示模式</p>
+      <h1 class="hero-title text-2xl lg:text-3xl">系统设置</h1>
+    </div>
+    {% if saved %}
+    <span class="tag">设置已保存</span>
+    {% endif %}
+  </div>
+
+  <form method="post" action="/settings" class="mt-6 space-y-4">
+    <div class="toggle-list">
+      <label><input type="checkbox" name="demo_mode" {% if ui_settings.demo_mode %}checked{% endif %}> 开启演示模式</label>
+      <label><input type="checkbox" name="mask_real_name" {% if ui_settings.mask_real_name %}checked{% endif %}> 隐藏真实姓名</label>
+      <label><input type="checkbox" name="mask_phone" {% if ui_settings.mask_phone %}checked{% endif %}> 隐藏电话号码</label>
+      <label><input type="checkbox" name="mask_location" {% if ui_settings.mask_location %}checked{% endif %}> 隐藏地点</label>
+      <label><input type="checkbox" name="mask_social" {% if ui_settings.mask_social %}checked{% endif %}> 隐藏社交账号</label>
+    </div>
+    <button class="button-primary" type="submit">保存设置</button>
+  </form>
+
+  <div class="panel panel-muted mt-6">
+    <p class="section-title">当前行为说明</p>
+    <div class="entry-list mt-3">
+      <p class="entry-summary">演示模式开启后，证据片段优先显示摘要与脱敏文本。导出时勾选“脱敏导出”会应用同样规则。</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

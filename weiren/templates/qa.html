@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="content-grid-two">
+  <article class="panel">
+    <p class="section-kicker">固定问答</p>
+    <form class="mt-5 space-y-4" method="post" action="/qa">
+      <label class="field">
+        <span>对象</span>
+        <select name="subject_name" class="input">
+          {% for name in subject_names %}
+          <option value="{{ name }}" {% if name == default_subject %}selected{% endif %}>{{ name }}</option>
+          {% endfor %}
+          {% if not subject_names %}
+          <option value="{{ default_subject }}">{{ default_subject }}</option>
+          {% endif %}
+        </select>
+      </label>
+      <label class="field">
+        <span>问题</span>
+        <textarea class="input" name="question" rows="6" placeholder="例如：她喜欢吃什么？她通常会因为什么不高兴？">{{ question or '' }}</textarea>
+      </label>
+      <button class="button-primary" type="submit">生成回答</button>
+    </form>
+
+    <div class="panel panel-muted mt-6">
+      <p class="section-title">支持问题</p>
+      <div class="entry-list mt-3">
+        <p class="entry-summary">喜欢、厌恶、说话风格、称呼、原话、时间段事件、不高兴原因。</p>
+      </div>
+    </div>
+  </article>
+
+  <article class="panel">
+    <p class="section-kicker">回答结果</p>
+    {% if response %}
+    <div class="entry-row mt-5">
+      <div class="entry-main">
+        <p class="entry-meta">意图 {{ response.intent }}</p>
+        <p class="entry-title mt-2">{{ response.answer }}</p>
+      </div>
+    </div>
+    <div class="mt-5">
+      <div class="section-heading-row">
+        <p class="section-title">证据来源</p>
+        <a href="/export" class="section-link">导出问答记录</a>
+      </div>
+      <div class="entry-list mt-3">
+        {% for item in response.evidence_sources %}
+        <div class="entry-row">
+          <div class="entry-main">
+            <p class="entry-title">{{ item.source_filename }} / {{ item.title }}</p>
+            <p class="entry-summary">{{ item.content }}</p>
+            <p class="entry-meta">{{ format_datetime(item.occurred_at) }}{% if item.score %} / 相似度 {{ '%.1f'|format(item.score) }}{% endif %}</p>
+          </div>
+        </div>
+        {% else %}
+        <p class="empty-copy">没有可展示的证据。</p>
+        {% endfor %}
+      </div>
+    </div>
+    {% else %}
+    <p class="empty-copy mt-5">提交问题后，这里会返回基于数据库内容的模板化回答。</p>
+    {% endif %}
+  </article>
+</section>
+
+<section class="panel panel-compact">
+  <div class="section-heading-row">
+    <p class="section-title">最近问答记录</p>
+    <a href="/export" class="section-link">导出记录</a>
+  </div>
+  <div class="entry-list">
+    {% for item in recent_qa %}
+    <div class="entry-row">
+      <div class="entry-main">
+        <p class="entry-title">{{ item.question }}</p>
+        <p class="entry-summary">{{ item.answer }}</p>
+        <p class="entry-meta">{{ item.subject_name }} / {{ item.intent }} / {{ format_datetime(item.created_at) }}</p>
+      </div>
+    </div>
+    {% else %}
+    <p class="empty-copy">暂无历史问答。</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

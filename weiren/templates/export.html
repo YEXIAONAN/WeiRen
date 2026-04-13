@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="content-grid-two">
+  <article class="panel">
+    <p class="section-kicker">档案导出</p>
+    <form method="post" action="/export" class="mt-5 space-y-4">
+      <label class="field">
+        <span>对象</span>
+        <select name="subject_name" class="input">
+          {% for name in subject_names %}
+          <option value="{{ name }}">{{ name }}</option>
+          {% endfor %}
+        </select>
+      </label>
+      <label class="field">
+        <span>导出类型</span>
+        <select name="export_type" class="input">
+          <option value="profile">人物资料卡 Markdown</option>
+          <option value="timeline">时间线 Markdown</option>
+          <option value="qa">固定问答记录 Markdown</option>
+          <option value="zip">完整档案包 ZIP</option>
+        </select>
+      </label>
+      <div class="toggle-row">
+        <label><input type="checkbox" name="include_evidence"> 包含原始证据</label>
+        <label><input type="checkbox" name="masked"> 脱敏导出</label>
+        <label><input type="checkbox" name="confirmed_only"> 仅导出已确认</label>
+      </div>
+      <button class="button-primary" type="submit">生成导出文件</button>
+    </form>
+  </article>
+
+  <article class="panel">
+    <div class="section-heading-row">
+      <p class="section-title">最近导出记录</p>
+      <a href="/settings" class="section-link">隐私设置</a>
+    </div>
+    <div class="entry-list mt-4">
+      {% for item in export_records %}
+      <div class="entry-row">
+        <div class="entry-main">
+          <p class="entry-title">{{ item.subject_name }} / {{ item.export_type }}</p>
+          <p class="entry-summary">{{ item.output_path }}</p>
+          <p class="entry-meta">{{ format_datetime(item.created_at) }} / {% if item.masked %}已脱敏{% else %}原文{% endif %}</p>
+        </div>
+      </div>
+      {% else %}
+      <p class="empty-copy">暂无导出记录。</p>
+      {% endfor %}
+    </div>
+  </article>
+</section>
+{% endblock %}

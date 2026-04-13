@@ -1,0 +1,198 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="grid gap-5 lg:grid-cols-[320px_minmax(0,1fr)]">
+  <aside class="space-y-5">
+    <article class="panel panel-compact">
+      <div class="section-heading-row">
+        <div>
+          <p class="section-kicker">搜索筛选</p>
+          <h1 class="hero-title text-2xl lg:text-3xl">检索</h1>
+        </div>
+      </div>
+      <form class="mt-5 space-y-4" method="get" action="/search">
+        <label class="field">
+          <span>查询语句</span>
+          <input class="input" type="text" name="q" value="{{ q }}" placeholder="例如：type:quote source:json date:2024-10 咖啡">
+        </label>
+        <div class="grid gap-3 md:grid-cols-3 lg:grid-cols-1">
+          <label class="field">
+            <span>来源</span>
+            <select name="source_id" class="input">
+              <option value="">全部来源</option>
+              {% for source in sources %}
+              <option value="{{ source.id }}" {% if source_id == source.id %}selected{% endif %}>{{ source.filename }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="field">
+            <span>起始日期</span>
+            <input class="input" type="date" name="start_date" value="{{ start_date }}">
+          </label>
+          <label class="field">
+            <span>结束日期</span>
+            <input class="input" type="date" name="end_date" value="{{ end_date }}">
+          </label>
+        </div>
+        <label class="field">
+          <span>相似句参照</span>
+          <textarea class="input" rows="4" name="similar" placeholder="例如：别在消息里兜圈子，直接说重点。">{{ similar }}</textarea>
+        </label>
+        <div class="action-row">
+          <button class="button-primary" type="submit">执行搜索</button>
+        </div>
+      </form>
+
+      <form class="mt-5 space-y-3" method="post" action="/search/save">
+        <input type="hidden" name="q" value="{{ q }}">
+        <input type="hidden" name="similar" value="{{ similar }}">
+        <input type="hidden" name="source_id" value="{{ source_id or '' }}">
+        <input type="hidden" name="start_date" value="{{ start_date }}">
+        <input type="hidden" name="end_date" value="{{ end_date }}">
+        <label class="field">
+          <span>保存当前搜索</span>
+          <input class="input" type="text" name="preset_name" placeholder="例如：十月原话 / PDF 记忆">
+        </label>
+        <button class="button-secondary" type="submit">保存条件</button>
+      </form>
+    </article>
+
+    <article class="panel panel-compact">
+      <p class="section-title">高级语法</p>
+      <div class="entry-list">
+        <div class="entry-row"><p class="entry-summary"><code>type:quote</code> <code>type:memory</code></p></div>
+        <div class="entry-row"><p class="entry-summary"><code>source:pdf</code> <code>source:json</code></p></div>
+        <div class="entry-row"><p class="entry-summary"><code>date:2024-10</code> <code>date:2024-10-07</code></p></div>
+        <div class="entry-row"><p class="entry-summary"><code>tag:food</code> <code>tag:emotion</code></p></div>
+        <div class="entry-row"><p class="entry-summary">可组合：<code>type:quote source:json date:2024-08 咖啡</code></p></div>
+      </div>
+    </article>
+
+    <article class="panel panel-compact">
+      <div class="section-heading-row">
+        <p class="section-title">已保存条件</p>
+      </div>
+      <div class="entry-list">
+        {% for item in saved_presets %}
+        <a class="entry-row block" href="{{ build_search_url(item.raw_query, item.similar_query, item.source_id, item.start_date, item.end_date) }}">
+          <p class="entry-title">{{ item.name }}</p>
+          <p class="entry-summary">{{ item.raw_query or '无关键词' }}</p>
+          <p class="entry-meta">{{ format_datetime(item.updated_at) }}</p>
+        </a>
+        {% else %}
+        <p class="empty-copy">暂无保存条件。</p>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="panel panel-compact">
+      <div class="section-heading-row">
+        <p class="section-title">搜索历史</p>
+      </div>
+      <div class="entry-list">
+        {% for item in search_history %}
+        <a class="entry-row block" href="{{ build_search_url(item.raw_query, item.similar_query, item.source_id, item.start_date, item.end_date) }}">
+          <p class="entry-title">{{ item.raw_query or item.similar_query or '空查询' }}</p>
+          <p class="entry-meta">命中 {{ item.result_count }} 条 / {{ format_datetime(item.created_at) }}</p>
+        </a>
+        {% else %}
+        <p class="empty-copy">暂无搜索历史。</p>
+        {% endfor %}
+      </div>
+    </article>
+  </aside>
+
+  <section class="space-y-5">
+    <article class="panel panel-compact">
+      <div class="section-heading-row">
+        <p class="section-title">当前筛选</p>
+        <p class="section-note">结果 {{ results|length }} 条</p>
+      </div>
+      <div class="toggle-list mt-4">
+        {% if parsed_query.text_terms %}<span class="tag">关键词 {{ parsed_query.text_terms|join(' / ') }}</span>{% endif %}
+        {% if parsed_query.entity_types %}<span class="tag">类型 {{ parsed_query.entity_types|join(' / ') }}</span>{% endif %}
+        {% if parsed_query.source_types %}<span class="tag">来源 {{ parsed_query.source_types|join(' / ') }}</span>{% endif %}
+        {% if parsed_query.tags %}<span class="tag">标签 {{ parsed_query.tags|join(' / ') }}</span>{% endif %}
+        {% if parsed_query.date_token %}<span class="tag">日期 {{ parsed_query.date_token }}</span>{% endif %}
+        {% if source_id %}<span class="tag">来源 ID {{ source_id }}</span>{% endif %}
+        {% if start_date or end_date %}<span class="tag">范围 {{ start_date or '不限' }} ~ {{ end_date or '不限' }}</span>{% endif %}
+        {% if not q and not similar %}<span class="tag">尚未检索</span>{% endif %}
+      </div>
+    </article>
+
+    <article class="panel panel-compact">
+      <div class="section-heading-row">
+        <p class="section-title">全文命中</p>
+      </div>
+      <div class="entry-list">
+        {% for result in results %}
+        <div class="entry-row">
+          <div class="entry-main">
+            <div class="section-heading-row">
+              <div>
+                <p class="entry-title">{{ result.title }}</p>
+                <p class="entry-meta">{{ result.entity_type }} / {{ result.source_filename }} / {{ result.source_type }} / {{ result.person_name }}</p>
+              </div>
+              <div class="action-stack">
+                <p class="entry-meta">{{ format_datetime(result.occurred_at) }}</p>
+                <a href="/evidence/{{ result.entity_type }}/{{ result.entity_id }}" class="section-link">查看证据</a>
+              </div>
+            </div>
+            <p class="entry-summary">{{ result.highlight|safe }}</p>
+            {% if result.tags %}
+            <div class="toggle-list mt-3">
+              {% for tag in result.tags %}
+              <span class="tag">{{ tag }}</span>
+              {% endfor %}
+            </div>
+            {% endif %}
+            {% if result.related_fragments %}
+            <div class="mt-4">
+              <p class="section-note">与当前结果相关的其他片段</p>
+              <div class="entry-list mt-2">
+                {% for item in result.related_fragments %}
+                <div class="entry-row">
+                  <div class="entry-main">
+                    <p class="entry-title">{{ item.title }} / {{ item.entity_type }}</p>
+                    <p class="entry-summary">{{ item.snippet|safe }}</p>
+                    <p class="entry-meta">相关度 {{ '%.1f'|format(item.score) }}</p>
+                  </div>
+                </div>
+                {% endfor %}
+              </div>
+            </div>
+            {% endif %}
+          </div>
+        </div>
+        {% else %}
+        <p class="empty-copy">输入关键词或筛选条件后，这里显示全文检索结果。</p>
+        {% endfor %}
+      </div>
+    </article>
+
+    <article class="panel panel-compact">
+      <div class="section-heading-row">
+        <p class="section-title">相似句结果</p>
+      </div>
+      <div class="entry-list">
+        {% for item in similar_results %}
+        <div class="entry-row">
+          <div class="entry-main">
+            <div class="section-heading-row">
+              <div>
+                <p class="entry-title">{{ item.title }}</p>
+                <p class="entry-meta">{{ item.entity_type }} / {{ item.source_filename }} / {{ item.source_type }}</p>
+              </div>
+              <p class="entry-meta">相似度 {{ '%.1f'|format(item.score) }}</p>
+            </div>
+            <p class="entry-summary">{{ item.highlight|safe }}</p>
+            <a href="/evidence/{{ item.entity_type }}/{{ item.entity_id }}" class="section-link">查看证据</a>
+          </div>
+        </div>
+        {% else %}
+        <p class="empty-copy">输入参照句后，这里显示 RapidFuzz 相似句匹配结果。</p>
+        {% endfor %}
+      </div>
+    </article>
+  </section>
+</section>
+{% endblock %}

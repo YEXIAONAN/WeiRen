@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ app_title }}</title>
+  <link rel="stylesheet" href="/static/css/tailwind.css">
+  <script defer src="/static/js/app.js"></script>
+</head>
+<body class="min-h-screen bg-ink text-stone-100 antialiased">
+  <div class="site-shell">
+    <header class="site-header">
+      <div class="brand-block">
+        <a href="/" class="brand-mark">{{ app_title }}</a>
+        <p class="brand-copy">人物记忆整理、检索、校正与导出系统</p>
+      </div>
+      <nav class="site-nav" aria-label="主导航">
+        <a href="/" class="nav-link {% if request.url.path == '/' %}nav-link-active{% endif %}">首页</a>
+        <a href="/import" class="nav-link {% if request.url.path == '/import' %}nav-link-active{% endif %}">导入</a>
+        <a href="/profile" class="nav-link {% if request.url.path == '/profile' %}nav-link-active{% endif %}">资料</a>
+        <a href="/timeline" class="nav-link {% if request.url.path == '/timeline' %}nav-link-active{% endif %}">时间线</a>
+        <a href="/search" class="nav-link {% if request.url.path == '/search' %}nav-link-active{% endif %}">搜索</a>
+        <a href="/qa" class="nav-link {% if request.url.path == '/qa' %}nav-link-active{% endif %}">问答</a>
+        <a href="/review" class="nav-link {% if request.url.path == '/review' %}nav-link-active{% endif %}">校正</a>
+        <a href="/dedupe" class="nav-link {% if request.url.path == '/dedupe' %}nav-link-active{% endif %}">去重</a>
+        <a href="/export" class="nav-link {% if request.url.path == '/export' %}nav-link-active{% endif %}">导出</a>
+        <a href="/settings" class="nav-link {% if request.url.path == '/settings' %}nav-link-active{% endif %}">设置</a>
+      </nav>
+    </header>
+
+    <main class="page-main">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <span>本地时间 {{ now.strftime('%Y-%m-%d %H:%M') }}</span>
+      <span>演示模式：{% if ui_settings.demo_mode %}开启{% else %}关闭{% endif %}</span>
+    </footer>
+  </div>
+</body>
+</html>

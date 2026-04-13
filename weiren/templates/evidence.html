@@ -1,0 +1,34 @@
+{% extends 'base.html' %}
+{% block content %}
+<section class="panel">
+  <div class="section-heading-row">
+    <div>
+      <p class="section-kicker">证据链</p>
+      <h1 class="hero-title text-2xl lg:text-3xl">{{ entity_label }} / {{ record_title }}</h1>
+      <p class="hero-summary">{{ display_text(record_content, record.masked_content if record.masked_content is defined else None) }}</p>
+    </div>
+    <a href="/review?entity_type={{ entity_type }}{% if record.person_name is defined and record.person_name %}&person={{ record.person_name }}{% endif %}" class="button-secondary">前往校正</a>
+  </div>
+</section>
+
+<section class="panel panel-compact">
+  <div class="section-heading-row">
+    <p class="section-title">来源片段</p>
+    <p class="section-note">共 {{ evidence_items|length }} 条</p>
+  </div>
+  <div class="entry-list">
+    {% for item in evidence_items %}
+    <div class="entry-row">
+      <div class="entry-main">
+        <p class="entry-title">{{ item.source_filename }} / {{ item.source_type }}</p>
+        <p class="entry-summary">{{ item.raw_text }}</p>
+        <p class="entry-meta">导入时间 {{ format_datetime(item.imported_at) }} / 关联日期 {{ format_datetime(item.related_date) }}</p>
+        <p class="entry-meta">命中关键词：{{ item.keyword_hits|join('、') if item.keyword_hits else '无' }}{% if item.similarity_score is not none %} / 相似度 {{ '%.1f'|format(item.similarity_score) }}{% endif %}</p>
+      </div>
+    </div>
+    {% else %}
+    <p class="empty-copy">没有找到证据片段。</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}
