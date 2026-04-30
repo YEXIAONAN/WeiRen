@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import date, datetime, time
@@ -8,16 +9,10 @@ from typing import Iterable, Optional, Sequence
 from sqlalchemy import text
 from sqlmodel import Session, select
 
-try:
-    from weiren.models import Message, Preference, Quote, Source, TimelineEvent, Trait
-    from weiren.services.question_intent_rules import QuestionIntent, QuestionIntentClassifier
-    from weiren.utils.fuzzy_utils import FuzzyMatch, best_similarity, rank_similar_texts
-    from weiren.utils.text import extract_keywords
-except ImportError:  # pragma: no cover - compatibility shim
-    from app.models import Message, Preference, Quote, Source, TimelineEvent, Trait
-    from app.rules.question_intent_rules import QuestionIntent, QuestionIntentClassifier
-    from app.utils.fuzzy_utils import FuzzyMatch, best_similarity, rank_similar_texts
-    from app.utils.text import extract_keywords
+from weiren.models import Message, Preference, Quote, Source, TimelineEvent, Trait
+from weiren.services.question_intent_rules import QuestionIntent, QuestionIntentClassifier
+from weiren.utils.fuzzy_utils import FuzzyMatch, best_similarity, rank_similar_texts
+from weiren.utils.text import extract_keywords
 
 
 INSUFFICIENT_ANSWER = "现有资料不足以确认。"
@@ -494,12 +489,11 @@ class QAService:
 
     @staticmethod
     def _quotes_for_subject(session: Session, subject_name: str) -> list[Quote]:
-        quotes = session.exec(select(Quote).order_by(Quote.occurred_at.desc(), Quote.id.desc())).all()
-        return [
-            quote
-            for quote in quotes
-            if subject_name in (quote.person_name or "") or subject_name in (quote.speaker or "")
-        ]
+        return session.exec(
+            select(Quote)
+            .where((Quote.person_name == subject_name) | (Quote.speaker == subject_name))
+            .order_by(Quote.occurred_at.desc(), Quote.id.desc())
+        ).all()
 
     @staticmethod
     def _extract_preference_items_from_evidence(evidence: Sequence[QAEvidence], positive: bool) -> list[str]:
@@ -509,7 +503,6 @@ class QAService:
             else [r"(?:不喜欢|讨厌|受不了|厌恶)([\u4e00-\u9fa5A-Za-z0-9、，,]{1,18})"]
         )
         items: list[str] = []
-        import re
 
         for entry in evidence:
             for pattern in patterns:
@@ -537,8 +530,6 @@ class QAService:
 
     @staticmethod
     def _extract_appellations(content: str) -> list[str]:
-        import re
-
         candidates: list[str] = []
         patterns = [
             r"^([\u4e00-\u9fa5A-Za-z]{1,6})[，,:：]",
@@ -571,8 +562,6 @@ class QAService:
 
     @staticmethod
     def _extract_negative_reasons(evidence: Sequence[QAEvidence]) -> list[str]:
-        import re
-
         reasons: list[str] = []
         patterns = [
             r"(?:不喜欢|讨厌|受不了|厌恶)([\u4e00-\u9fa5A-Za-z0-9、，,]{1,18})",

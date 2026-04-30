@@ -25,126 +25,87 @@ class Source(SQLModel, table=True):
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
 
 
-class Message(SQLModel, table=True):
+class SourceFK:
+    """Mixin providing a source_id foreign key column."""
+    source_id: int = Field(foreign_key="sources.id", nullable=False, index=True)
+
+
+class AuditMeta:
+    """Mixin for content entities with review and audit fields."""
+    masked_content: Optional[str] = Field(default=None)
+    is_confirmed: bool = Field(default=False)
+    is_low_confidence: bool = Field(default=False)
+    merge_group_id: Optional[str] = Field(default=None, index=True, max_length=64)
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    updated_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+class Message(SourceFK, AuditMeta, SQLModel, table=True):
     __tablename__ = "messages"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    source_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True)
-    )
     speaker: Optional[str] = Field(default=None, index=True, max_length=100)
     content: str = Field(sa_column=Column(Text, nullable=False))
-    masked_content: Optional[str] = Field(default=None, sa_column=Column(Text))
     occurred_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, index=True))
     paragraph_index: int = Field(default=0, sa_column=Column(Integer, nullable=False))
     keywords_json: str = Field(default="[]", sa_column=Column(Text, nullable=False))
     people_json: str = Field(default="[]", sa_column=Column(Text, nullable=False))
-    is_confirmed: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    is_low_confidence: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    merge_group_id: Optional[str] = Field(default=None, index=True, max_length=64)
-    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
 
 
-class Memory(SQLModel, table=True):
+class Memory(SourceFK, AuditMeta, SQLModel, table=True):
     __tablename__ = "memories"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    source_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True)
-    )
     person_name: str = Field(index=True, max_length=100)
     title: str = Field(max_length=200)
     content: str = Field(sa_column=Column(Text, nullable=False))
-    masked_content: Optional[str] = Field(default=None, sa_column=Column(Text))
     occurred_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, index=True))
     event_time: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, index=True))
     confidence: float = Field(default=0.5, sa_column=Column(Float, nullable=False))
-    is_confirmed: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    is_low_confidence: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    merge_group_id: Optional[str] = Field(default=None, index=True, max_length=64)
-    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
 
 
-class Preference(SQLModel, table=True):
+class Preference(SourceFK, AuditMeta, SQLModel, table=True):
     __tablename__ = "preferences"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    source_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True)
-    )
     person_name: str = Field(index=True, max_length=100)
     category: str = Field(default="general", max_length=50)
     item: str = Field(max_length=200)
     polarity: str = Field(index=True, max_length=16)
     evidence: str = Field(sa_column=Column(Text, nullable=False))
-    masked_content: Optional[str] = Field(default=None, sa_column=Column(Text))
     occurred_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, index=True))
-    is_confirmed: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    is_low_confidence: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    merge_group_id: Optional[str] = Field(default=None, index=True, max_length=64)
-    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
 
 
-class Trait(SQLModel, table=True):
+class Trait(SourceFK, AuditMeta, SQLModel, table=True):
     __tablename__ = "traits"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    source_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True)
-    )
     person_name: str = Field(index=True, max_length=100)
     trait: str = Field(max_length=200)
     evidence: str = Field(sa_column=Column(Text, nullable=False))
-    masked_content: Optional[str] = Field(default=None, sa_column=Column(Text))
     weight: float = Field(default=1.0, sa_column=Column(Float, nullable=False))
-    is_confirmed: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    is_low_confidence: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    merge_group_id: Optional[str] = Field(default=None, index=True, max_length=64)
-    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
 
 
-class Quote(SQLModel, table=True):
+class Quote(SourceFK, AuditMeta, SQLModel, table=True):
     __tablename__ = "quotes"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    source_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True)
-    )
     person_name: str = Field(index=True, max_length=100)
     speaker: Optional[str] = Field(default=None, index=True, max_length=100)
     content: str = Field(sa_column=Column(Text, nullable=False))
-    masked_content: Optional[str] = Field(default=None, sa_column=Column(Text))
     tags_json: str = Field(default="[]", sa_column=Column(Text, nullable=False))
     occurred_at: Optional[datetime] = Field(default=None, sa_column=Column(DateTime, index=True))
-    is_confirmed: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    is_low_confidence: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    merge_group_id: Optional[str] = Field(default=None, index=True, max_length=64)
-    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
 
 
-class TimelineEvent(SQLModel, table=True):
+class TimelineEvent(SourceFK, AuditMeta, SQLModel, table=True):
     __tablename__ = "timeline_events"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    source_id: int = Field(
-        sa_column=Column(Integer, ForeignKey("sources.id", ondelete="CASCADE"), nullable=False, index=True)
-    )
     person_name: str = Field(index=True, max_length=100)
     event_date: Optional[date] = Field(default=None, sa_column=Column(Date, index=True))
     title: str = Field(max_length=200)
     content: str = Field(sa_column=Column(Text, nullable=False))
     evidence: str = Field(sa_column=Column(Text, nullable=False))
-    masked_content: Optional[str] = Field(default=None, sa_column=Column(Text))
-    is_confirmed: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    is_low_confidence: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
-    merge_group_id: Optional[str] = Field(default=None, index=True, max_length=64)
-    created_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
-    updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))
 
 
 class SearchDocument(SQLModel, table=True):

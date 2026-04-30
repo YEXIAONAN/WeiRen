@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from contextlib import contextmanager
 from datetime import datetime
+from pathlib import Path
 from typing import Generator, Iterable
 
 from sqlalchemy import event, inspect, text
@@ -10,6 +11,7 @@ from sqlmodel import Session, SQLModel, create_engine, select
 
 from weiren import models  # noqa: F401
 from weiren.config import settings
+from weiren.utils.entity_registry import ENTITY_MEMORY, ENTITY_PREFERENCE, ENTITY_QUOTE, ENTITY_TIMELINE, ENTITY_TRAIT
 from weiren.models import (
     AppSetting,
     EvidenceLink,
@@ -50,6 +52,22 @@ def init_db() -> None:
     _ensure_default_settings()
     _backfill_masked_content_and_state()
     _backfill_evidence_links()
+    _cleanup_old_files(settings.upload_dir, max_age_days=7)
+    _cleanup_old_files(settings.data_dir / "exports", max_age_days=7)
+
+
+def _cleanup_old_files(directory: Path, max_age_days: int) -> None:
+    if not directory.exists():
+        return
+    cutoff = datetime.utcnow().timestamp() - max_age_days * 86400
+    removed = 0
+    for entry in directory.iterdir():
+        if entry.is_file() and entry.stat().st_mtime < cutoff:
+            entry.unlink()
+            removed += 1
+    if removed:
+        import logging
+        logging.getLogger("weiren.db").info("Cleaned %d old files from %s", removed, directory.name)
 
 
 def _migration_ddls() -> list[str]:
@@ -161,9 +179,13 @@ def _backfill_masked_content_and_state() -> None:
             (TimelineEvent, "content"),
         ]
         for model, field_name in content_entities:
-            for record in session.exec(select(model)).all():
+            for record in session.exec(
+                select(model).where(
+                    getattr(model, "masked_content").is_(None) | (getattr(model, "masked_content") == "")
+                )
+            ).all():
                 original = getattr(record, field_name, "")
-                if getattr(record, "masked_content", None) in {None, ""} and original:
+                if original:
                     record.masked_content = build_masked_text(original, summary_only=False)
                     record.updated_at = datetime.utcnow()
                     changed = True
@@ -171,11 +193,6 @@ def _backfill_masked_content_and_state() -> None:
                     record.event_time = getattr(record, "occurred_at")
                     record.updated_at = datetime.utcnow()
                     changed = True
-        for message in session.exec(select(Message)).all():
-            if not message.masked_content and message.content:
-                message.masked_content = build_masked_text(message.content, summary_only=False)
-                message.updated_at = datetime.utcnow()
-                changed = True
         if changed:
             session.commit()
 
@@ -187,21 +204,21 @@ def _backfill_evidence_links() -> None:
             messages_by_source.setdefault(message.source_id, []).append(message)
 
         entities = [
-            (Trait, "trait", lambda item: item.evidence),
-            (Preference, "preference", lambda item: item.evidence),
-            (Memory, "memory", lambda item: item.content),
-            (Quote, "quote", lambda item: item.content),
-            (TimelineEvent, "timeline", lambda item: item.content),
+            (Trait, ENTITY_TRAIT, lambda item: item.evidence),
+            (Preference, ENTITY_PREFERENCE, lambda item: item.evidence),
+            (Memory, ENTITY_MEMORY, lambda item: item.content),
+            (Quote, ENTITY_QUOTE, lambda item: item.content),
+            (TimelineEvent, ENTITY_TIMELINE, lambda item: item.content),
         ]
+        existing_links: dict[str, set[int]] = {}
+        for link in session.exec(select(EvidenceLink)).all():
+            existing_links.setdefault(link.entity_type, set()).add(link.entity_id)
+
         changed = False
         for model, entity_type, text_getter in entities:
+            existing_ids = existing_links.get(entity_type, set())
             for record in session.exec(select(model)).all():
-                if record.id is None:
-                    continue
-                exists = session.exec(
-                    select(EvidenceLink).where(EvidenceLink.entity_type == entity_type, EvidenceLink.entity_id == record.id)
-                ).first()
-                if exists is not None:
+                if record.id is None or record.id in existing_ids:
                     continue
                 raw_text = text_getter(record)
                 candidates = messages_by_source.get(record.source_id, [])

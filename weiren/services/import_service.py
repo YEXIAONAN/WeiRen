@@ -23,6 +23,7 @@ from weiren.models import (
 from weiren.services.evidence_service import EvidenceService
 from weiren.services.extraction import ExtractionBundle, RuleBasedExtractor
 from weiren.services.parsers import ParsedSource, SourceParser
+from weiren.utils.entity_registry import ENTITY_MEMORY, ENTITY_MESSAGE, ENTITY_PREFERENCE, ENTITY_QUOTE, ENTITY_TIMELINE, ENTITY_TRAIT
 from weiren.utils.privacy import build_masked_text
 from weiren.utils.text import dumps_json, extract_keywords, extract_people
 
@@ -51,7 +52,26 @@ class ImportService:
         for upload in files:
             if not upload.filename:
                 continue
+
             payload = await upload.read()
+            if len(payload) > settings.max_upload_size:
+                results.append(
+                    ImportResult(source=Source(filename=upload.filename, source_type="unknown", file_hash=""), skipped=True, reason="文件超过大小限制")
+                )
+                continue
+
+            ext = Path(upload.filename).suffix.lower().lstrip(".")
+            if ext in {"jpg", "jpeg", "png"} and not _is_valid_image(payload):
+                results.append(
+                    ImportResult(source=Source(filename=upload.filename, source_type="image", file_hash=""), skipped=True, reason="图片文件格式无效")
+                )
+                continue
+            if ext == "pdf" and not _is_valid_pdf(payload):
+                results.append(
+                    ImportResult(source=Source(filename=upload.filename, source_type="pdf", file_hash=""), skipped=True, reason="PDF 文件格式无效")
+                )
+                continue
+
             file_hash = hashlib.sha256(payload).hexdigest()
             existing = session.exec(select(Source).where(Source.file_hash == file_hash)).first()
             if existing:
@@ -118,7 +138,7 @@ class ImportService:
             session.flush()
             session.add(
                 SearchDocument(
-                    entity_type="message",
+                    entity_type=ENTITY_MESSAGE,
                     entity_id=message.id,
                     source_id=source.id,
                     person_name=parsed.subject_name,
@@ -139,8 +159,8 @@ class ImportService:
             trait.updated_at = datetime.utcnow()
             session.add(trait)
             session.flush()
-            self._add_search_doc(session, source.subject_name, source.id, "trait", trait.id, trait.trait, trait.evidence, None)
-            self.evidence_service.ensure_entity_links(session, "trait", trait)
+            self._add_search_doc(session, source.subject_name, source.id, ENTITY_TRAIT, trait.id, trait.trait, trait.evidence, None)
+            self.evidence_service.ensure_entity_links(session, ENTITY_TRAIT, trait)
 
         for preference in bundle.preferences:
             preference.masked_content = build_masked_text(preference.evidence)
@@ -148,16 +168,16 @@ class ImportService:
             session.add(preference)
             session.flush()
             content = f"{preference.item} {preference.polarity} {preference.evidence}"
-            self._add_search_doc(session, source.subject_name, source.id, "preference", preference.id, preference.item, content, preference.occurred_at)
-            self.evidence_service.ensure_entity_links(session, "preference", preference)
+            self._add_search_doc(session, source.subject_name, source.id, ENTITY_PREFERENCE, preference.id, preference.item, content, preference.occurred_at)
+            self.evidence_service.ensure_entity_links(session, ENTITY_PREFERENCE, preference)
 
         for quote in bundle.quotes:
             quote.masked_content = build_masked_text(quote.content)
             quote.updated_at = datetime.utcnow()
             session.add(quote)
             session.flush()
-            self._add_search_doc(session, quote.person_name, source.id, "quote", quote.id, quote.speaker or "原话", quote.content, quote.occurred_at)
-            self.evidence_service.ensure_entity_links(session, "quote", quote)
+            self._add_search_doc(session, quote.person_name, source.id, ENTITY_QUOTE, quote.id, quote.speaker or "原话", quote.content, quote.occurred_at)
+            self.evidence_service.ensure_entity_links(session, ENTITY_QUOTE, quote)
 
         for memory in bundle.memories:
             memory.masked_content = build_masked_text(memory.content)
@@ -165,8 +185,8 @@ class ImportService:
             memory.updated_at = datetime.utcnow()
             session.add(memory)
             session.flush()
-            self._add_search_doc(session, memory.person_name, source.id, "memory", memory.id, memory.title, memory.content, memory.occurred_at)
-            self.evidence_service.ensure_entity_links(session, "memory", memory)
+            self._add_search_doc(session, memory.person_name, source.id, ENTITY_MEMORY, memory.id, memory.title, memory.content, memory.occurred_at)
+            self.evidence_service.ensure_entity_links(session, ENTITY_MEMORY, memory)
 
         for event in bundle.timeline_events:
             event.masked_content = build_masked_text(event.content)
@@ -174,8 +194,8 @@ class ImportService:
             session.add(event)
             session.flush()
             occurred_at = datetime.combine(event.event_date, datetime.min.time()) if event.event_date else None
-            self._add_search_doc(session, event.person_name, source.id, "timeline", event.id, event.title, event.content, occurred_at)
-            self.evidence_service.ensure_entity_links(session, "timeline", event)
+            self._add_search_doc(session, event.person_name, source.id, ENTITY_TIMELINE, event.id, event.title, event.content, occurred_at)
+            self.evidence_service.ensure_entity_links(session, ENTITY_TIMELINE, event)
 
     @staticmethod
     def _add_search_doc(
@@ -201,3 +221,19 @@ class ImportService:
                 occurred_at=occurred_at,
             )
         )
+
+
+def _is_valid_image(data: bytes) -> bool:
+    """Validate image via magic bytes (JPEG: FF D8 FF, PNG: 89 50 4E 47)."""
+    if len(data) < 8:
+        return False
+    if data[0:3] == b"\xff\xd8\xff":
+        return True
+    if data[0:8] == b"\x89PNG\r\n\x1a\n":
+        return True
+    return False
+
+
+def _is_valid_pdf(data: bytes) -> bool:
+    """Validate PDF via magic bytes (%PDF)."""
+    return data.startswith(b"%PDF")

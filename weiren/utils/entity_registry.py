@@ -7,6 +7,15 @@ from typing import Any, Optional
 from weiren.models import Memory, Preference, Quote, TimelineEvent, Trait
 
 
+# Entity type constants — use these instead of raw strings throughout the codebase
+ENTITY_TRAIT = "trait"
+ENTITY_PREFERENCE = "preference"
+ENTITY_MEMORY = "memory"
+ENTITY_QUOTE = "quote"
+ENTITY_TIMELINE = "timeline"
+ENTITY_MESSAGE = "message"
+
+
 @dataclass(frozen=True, slots=True)
 class EntityMeta:
     entity_type: str
@@ -18,16 +27,16 @@ class EntityMeta:
 
 
 ENTITY_REGISTRY: dict[str, EntityMeta] = {
-    "trait": EntityMeta("trait", Trait, "人物特征", "trait", "evidence", None),
-    "preference": EntityMeta("preference", Preference, "偏好厌恶", "item", "evidence", "occurred_at"),
-    "memory": EntityMeta("memory", Memory, "共同记忆", "title", "content", "event_time"),
-    "quote": EntityMeta("quote", Quote, "典型原话", "speaker", "content", "occurred_at"),
-    "timeline": EntityMeta("timeline", TimelineEvent, "时间线事件", "title", "content", "event_date"),
+    ENTITY_TRAIT: EntityMeta(ENTITY_TRAIT, Trait, "人物特征", "trait", "evidence", None),
+    ENTITY_PREFERENCE: EntityMeta(ENTITY_PREFERENCE, Preference, "偏好厌恶", "item", "evidence", "occurred_at"),
+    ENTITY_MEMORY: EntityMeta(ENTITY_MEMORY, Memory, "共同记忆", "title", "content", "event_time"),
+    ENTITY_QUOTE: EntityMeta(ENTITY_QUOTE, Quote, "典型原话", "speaker", "content", "occurred_at"),
+    ENTITY_TIMELINE: EntityMeta(ENTITY_TIMELINE, TimelineEvent, "时间线事件", "title", "content", "event_date"),
 }
 
 
-REVIEWABLE_ENTITY_TYPES = ["trait", "preference", "memory", "quote", "timeline"]
-DEDUPE_ENTITY_TYPES = ["memory", "quote", "timeline"]
+REVIEWABLE_ENTITY_TYPES = [ENTITY_TRAIT, ENTITY_PREFERENCE, ENTITY_MEMORY, ENTITY_QUOTE, ENTITY_TIMELINE]
+DEDUPE_ENTITY_TYPES = [ENTITY_MEMORY, ENTITY_QUOTE, ENTITY_TIMELINE]
 
 
 def entity_meta(entity_type: str) -> EntityMeta:

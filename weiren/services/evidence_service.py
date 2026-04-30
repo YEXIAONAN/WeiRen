@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import date, datetime, time
-from typing import Any, Optional, Sequence
+from typing import Optional, Sequence
 
-from sqlmodel import Session, select
+from sqlmodel import Session, SQLModel, select
 
 from weiren.models import EvidenceLink, Message, Source
 from weiren.utils.entity_registry import entity_content, entity_date, entity_meta, entity_title
@@ -27,7 +27,7 @@ class EvidenceView:
 
 
 class EvidenceService:
-    def ensure_entity_links(self, session: Session, entity_type: str, record: Any) -> list[EvidenceLink]:
+    def ensure_entity_links(self, session: Session, entity_type: str, record: SQLModel) -> list[EvidenceLink]:
         if getattr(record, "id", None) is None:
             return []
         existing = session.exec(
@@ -128,6 +128,6 @@ class EvidenceService:
             return datetime.combine(value, time.min)
         return None
 
-    def fetch_entity(self, session: Session, entity_type: str, entity_id: int) -> Any:
+    def fetch_entity(self, session: Session, entity_type: str, entity_id: int) -> SQLModel | None:
         meta = entity_meta(entity_type)
         return session.get(meta.model, entity_id)

@@ -167,6 +167,17 @@
         <p class="empty-copy">输入关键词或筛选条件后，这里显示全文检索结果。</p>
         {% endfor %}
       </div>
+      {% if results %}
+      <div class="flex items-center justify-between border-t border-white/10 px-1 py-4 mt-6">
+        <p class="text-sm text-stone-500">当前页 {{ results|length }} 条</p>
+        <div class="flex gap-2">
+          {% if page > 1 %}
+          <a href="{{ pagination_url(request, page - 1) }}" class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-stone-300 transition hover:bg-white/10">&lsaquo; 上一页</a>
+          {% endif %}
+          <a href="{{ pagination_url(request, page + 1) }}" class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-stone-300 transition hover:bg-white/10">下一页 &rsaquo;</a>
+        </div>
+      </div>
+      {% endif %}
     </article>
 
     <article class="panel panel-compact">

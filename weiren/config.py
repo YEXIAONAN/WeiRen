@@ -13,6 +13,7 @@ class Settings:
     static_dir: Path = base_dir / "weiren" / "static"
     database_path: Path = data_dir / "weiren.db"
     app_title: str = "伪人"
+    max_upload_size: int = 50 * 1024 * 1024  # 50 MB per file
 
 
 settings = Settings()

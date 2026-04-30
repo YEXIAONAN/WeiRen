@@ -96,11 +96,12 @@ class SearchService:
         start_at: Optional[datetime] = None,
         end_at: Optional[datetime] = None,
         limit: int = 18,
+        offset: int = 0,
     ) -> SearchBundle:
         parsed = self.parse_query(query)
         effective_start = self._later_of(start_at, parsed.date_start)
         effective_end = self._earlier_of(end_at, parsed.date_end)
-        rows = self._fetch_documents(session, parsed, source_id, effective_start, effective_end, limit * 6)
+        rows = self._fetch_documents(session, parsed, source_id, effective_start, effective_end, limit * 6, offset)
         results = self._build_results(session, rows, parsed, limit)
         return SearchBundle(parsed_query=parsed, results=results)
 
@@ -228,13 +229,14 @@ class SearchService:
         start_at: Optional[datetime],
         end_at: Optional[datetime],
         limit: int,
+        offset: int = 0,
     ) -> list[dict[str, object]]:
         if parsed.text_terms:
-            rows = self._fts_rows(session, parsed, source_id, start_at, end_at, limit)
+            rows = self._fts_rows(session, parsed, source_id, start_at, end_at, limit, offset)
             if rows:
                 return rows
         fallback_limit = limit * 3 if parsed.tags else limit
-        return self._filtered_rows(session, parsed, source_id, start_at, end_at, fallback_limit)
+        return self._filtered_rows(session, parsed, source_id, start_at, end_at, fallback_limit, offset)
 
     def _fts_rows(
         self,
@@ -244,11 +246,12 @@ class SearchService:
         start_at: Optional[datetime],
         end_at: Optional[datetime],
         limit: int,
+        offset: int = 0,
     ) -> list[dict[str, object]]:
         match_query = self._build_fts_query(parsed.text_terms)
         if not match_query:
             return []
-        params: dict[str, object] = {"match_query": match_query, "limit": limit}
+        params: dict[str, object] = {"match_query": match_query, "limit": limit, "offset": offset}
         filters = ["search_documents_fts MATCH :match_query"]
         filters.extend(self._sql_filters(params, parsed, source_id, start_at, end_at))
         sql = f"""
@@ -269,7 +272,7 @@ class SearchService:
             JOIN sources s ON s.id = sd.source_id
             WHERE {' AND '.join(filters)}
             ORDER BY bm25(search_documents_fts), COALESCE(sd.occurred_at, sd.created_at) DESC
-            LIMIT :limit
+            LIMIT :limit OFFSET :offset
         """
         return [dict(row) for row in session.connection().execute(text(sql), params).mappings().all()]
 
@@ -281,8 +284,9 @@ class SearchService:
         start_at: Optional[datetime],
         end_at: Optional[datetime],
         limit: int,
+        offset: int = 0,
     ) -> list[dict[str, object]]:
-        params: dict[str, object] = {"limit": limit}
+        params: dict[str, object] = {"limit": limit, "offset": offset}
         filters = ["1=1"]
         filters.extend(self._sql_filters(params, parsed, source_id, start_at, end_at))
         sql = f"""
@@ -302,7 +306,7 @@ class SearchService:
             JOIN sources s ON s.id = sd.source_id
             WHERE {' AND '.join(filters)}
             ORDER BY COALESCE(sd.occurred_at, sd.created_at) DESC, sd.id DESC
-            LIMIT :limit
+            LIMIT :limit OFFSET :offset
         """
         return [dict(row) for row in session.connection().execute(text(sql), params).mappings().all()]
 

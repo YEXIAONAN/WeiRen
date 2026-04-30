@@ -11,6 +11,7 @@ from weiren.services.review_service import ReviewService
 from weiren.services.search_index_service import SearchIndexService
 from weiren.utils.entity_registry import DEDUPE_ENTITY_TYPES, entity_content, entity_meta, entity_title, serialize_record
 from weiren.utils.fuzzy_utils import composite_similarity
+from weiren.utils.privacy import build_masked_text
 from weiren.utils.text import dumps_json
 
 
@@ -114,8 +115,6 @@ class DedupeService:
             if hasattr(keep_record, "content") and merged_payload.get("content"):
                 keep_record.content = merged_payload["content"]
                 if hasattr(keep_record, "masked_content"):
-                    from weiren.utils.privacy import build_masked_text
-
                     keep_record.masked_content = build_masked_text(keep_record.content)
         keep_record.updated_at = datetime.utcnow()
         self.evidence_service.merge_links(session, entity_type, drop_id, keep_id)

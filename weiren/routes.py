@@ -38,7 +38,7 @@ from weiren.services.review_service import ReviewService
 from weiren.services.search_service import SearchService
 from weiren.services.settings_service import SettingsService
 from weiren.utils.datetime_utils import format_date, format_datetime, parse_date_input
-from weiren.utils.entity_registry import DEDUPE_ENTITY_TYPES, REVIEWABLE_ENTITY_TYPES, entity_content, entity_meta, entity_title
+from weiren.utils.entity_registry import DEDUPE_ENTITY_TYPES, ENTITY_TRAIT, REVIEWABLE_ENTITY_TYPES, entity_content, entity_meta, entity_title
 from weiren.utils.privacy import build_masked_text
 from weiren.utils.text import dumps_json, loads_json
 
@@ -53,6 +53,39 @@ review_service = ReviewService()
 dedupe_service = DedupeService()
 export_service = ExportService()
 chat_service = ChatService()
+
+
+@dataclass(slots=True)
+class Pagination:
+    page: int
+    page_size: int
+    total: int
+
+    @property
+    def total_pages(self) -> int:
+        return max(1, (self.total + self.page_size - 1) // self.page_size)
+
+    @property
+    def has_prev(self) -> bool:
+        return self.page > 1
+
+    @property
+    def has_next(self) -> bool:
+        return self.page < self.total_pages
+
+    @property
+    def offset(self) -> int:
+        return (self.page - 1) * self.page_size
+
+
+def page_params(page: int, page_size: int) -> tuple[int, int]:
+    return max(1, page), min(100, max(5, page_size))
+
+
+def pagination_url(request: Request, page: int) -> str:
+    params = {k: v for k, v in request.query_params.items() if k != "page"}
+    params["page"] = str(page)
+    return f"?{urlencode(params)}"
 
 
 @dataclass(slots=True)
@@ -99,6 +132,7 @@ def render(request: Request, template_name: str, context: dict, session: Session
         "ui_settings": ui_settings,
         "display_text": display_text,
         "build_search_url": build_search_url,
+        "pagination_url": pagination_url,
         "loads_json": loads_json,
     }
     base_context.update(context)
@@ -137,9 +171,18 @@ def index(request: Request, session: Session = Depends(get_session)) -> object:
 
 
 @router.get("/import")
-def import_page(request: Request, session: Session = Depends(get_session)) -> object:
-    sources = session.exec(select(Source).order_by(Source.imported_at.desc())).all()
-    return render(request, "import.html", {"sources": sources, "result_messages": []}, session)
+def import_page(
+    request: Request,
+    page: int = 1,
+    page_size: int = 20,
+    session: Session = Depends(get_session),
+) -> object:
+    page, page_size = page_params(page, page_size)
+    total = session.exec(select(func.count()).select_from(Source)).one()
+    sources = session.exec(
+        select(Source).order_by(Source.imported_at.desc()).offset((page - 1) * page_size).limit(page_size)
+    ).all()
+    return render(request, "import.html", {"sources": sources, "result_messages": [], "pagination": Pagination(page=page, page_size=page_size, total=total)}, session)
 
 
 @router.post("/import")
@@ -214,18 +257,26 @@ def timeline_page(
     person: Optional[str] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
     session: Session = Depends(get_session),
 ) -> object:
     names = subject_names(session)
     active_person = person or (names[0] if names else "未命名对象")
-    statement = select(TimelineEvent).where(TimelineEvent.person_name == active_person)
+    page, page_size = page_params(page, page_size)
     start = parse_date_input(start_date)
     end = parse_date_input(end_date)
+
+    filters = [TimelineEvent.person_name == active_person]
     if start:
-        statement = statement.where(TimelineEvent.event_date >= start)
+        filters.append(TimelineEvent.event_date >= start)
     if end:
-        statement = statement.where(TimelineEvent.event_date <= end)
-    events = session.exec(statement.order_by(TimelineEvent.event_date.desc(), TimelineEvent.id.desc())).all()
+        filters.append(TimelineEvent.event_date <= end)
+
+    total = session.exec(select(func.count()).where(*filters)).one()
+    events = session.exec(
+        select(TimelineEvent).where(*filters).order_by(TimelineEvent.event_date.desc(), TimelineEvent.id.desc()).offset((page - 1) * page_size).limit(page_size)
+    ).all()
     return render(
         request,
         "timeline.html",
@@ -235,6 +286,7 @@ def timeline_page(
             "events": events,
             "start_date": start_date or "",
             "end_date": end_date or "",
+            "pagination": Pagination(page=page, page_size=page_size, total=total),
         },
         session,
     )
@@ -248,14 +300,19 @@ def search_page(
     source_id: Optional[int] = None,
     start_date: Optional[str] = None,
     end_date: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 18,
     session: Session = Depends(get_session),
 ) -> object:
+    page, page_size = page_params(page, page_size)
     start = parse_date_input(start_date)
     end = parse_date_input(end_date)
     start_dt = datetime.combine(start, time.min) if start else None
     end_dt = datetime.combine(end, time.max) if end else None
-    search_bundle = search_service.search(session, q, source_id=source_id, start_at=start_dt, end_at=end_dt) if q.strip() else None
+    offset = (page - 1) * page_size
+    search_bundle = search_service.search(session, q, source_id=source_id, start_at=start_dt, end_at=end_dt, limit=page_size, offset=offset) if q.strip() else None
     similar_results = search_service.similar_sentences(session, similar, source_id=source_id) if similar.strip() else []
+    result_count = len(search_bundle.results if search_bundle else []) + len(similar_results)
     if q.strip() or similar.strip():
         search_service.record_history(
             session,
@@ -264,7 +321,7 @@ def search_page(
             source_id=source_id,
             start_date=start,
             end_date=end,
-            result_count=len(search_bundle.results if search_bundle else []) + len(similar_results),
+            result_count=result_count,
         )
     sources = session.exec(select(Source).order_by(Source.imported_at.desc())).all()
     return render(
@@ -472,13 +529,16 @@ def evidence_detail(entity_type: str, entity_id: int, request: Request, session:
 @router.get("/review")
 def review_page(
     request: Request,
-    entity_type: str = "trait",
+    entity_type: str = ENTITY_TRAIT,
     person: Optional[str] = None,
+    page: int = 1,
+    page_size: int = 20,
     session: Session = Depends(get_session),
 ) -> object:
     if entity_type not in REVIEWABLE_ENTITY_TYPES:
-        entity_type = "trait"
-    records = review_service.list_records(session, entity_type, person_name=person)
+        entity_type = ENTITY_TRAIT
+    page, page_size = page_params(page, page_size)
+    records, total = review_service.list_records(session, entity_type, person_name=person, page=page, page_size=page_size)
     return render(
         request,
         "review.html",
@@ -488,6 +548,7 @@ def review_page(
             "subject_names": subject_names(session),
             "active_person": person or "",
             "records": records,
+            "pagination": Pagination(page=page, page_size=page_size, total=total),
         },
         session,
     )

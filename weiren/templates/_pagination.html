@@ -1,0 +1,16 @@
+{% if pagination and pagination.total_pages > 1 %}
+<div class="flex items-center justify-between border-t border-white/10 px-1 py-4 mt-6">
+  <p class="text-sm text-stone-500">共 {{ pagination.total }} 条，第 {{ pagination.page }}/{{ pagination.total_pages }} 页</p>
+  <div class="flex gap-2">
+    {% if pagination.has_prev %}
+    <a href="{{ pagination_url(request, 1) }}" class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-stone-300 transition hover:bg-white/10">&laquo;</a>
+    <a href="{{ pagination_url(request, pagination.page - 1) }}" class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-stone-300 transition hover:bg-white/10">&lsaquo;</a>
+    {% endif %}
+    <span class="rounded-lg border border-blood/30 bg-blood/10 px-3 py-1.5 text-sm text-stone-200">{{ pagination.page }}</span>
+    {% if pagination.has_next %}
+    <a href="{{ pagination_url(request, pagination.page + 1) }}" class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-stone-300 transition hover:bg-white/10">&rsaquo;</a>
+    <a href="{{ pagination_url(request, pagination.total_pages) }}" class="rounded-lg border border-white/10 px-3 py-1.5 text-sm text-stone-300 transition hover:bg-white/10">&raquo;</a>
+    {% endif %}
+  </div>
+</div>
+{% endif %}

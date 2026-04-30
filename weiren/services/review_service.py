@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any, Optional
+from typing import Optional
 
-from sqlmodel import Session, select
+from sqlmodel import Session, SQLModel, func, select
 
 from weiren.models import ChangeLog, EvidenceLink, Preference, QARecord
 from weiren.services.evidence_service import EvidenceService
@@ -18,14 +18,24 @@ class ReviewService:
         self.evidence_service = EvidenceService()
         self.search_index_service = SearchIndexService()
 
-    def list_records(self, session: Session, entity_type: str, person_name: Optional[str] = None, limit: int = 50) -> list[Any]:
+    def list_records(
+        self, session: Session, entity_type: str, person_name: Optional[str] = None, page: int = 1, page_size: int = 20
+    ) -> tuple[list[SQLModel], int]:
         meta = entity_meta(entity_type)
-        statement = select(meta.model).order_by(meta.model.updated_at.desc(), meta.model.id.desc()).limit(limit)
+        filters = []
         if person_name and hasattr(meta.model, "person_name"):
-            statement = statement.where(meta.model.person_name == person_name)
-        return session.exec(statement).all()
+            filters.append(meta.model.person_name == person_name)
+        total = session.exec(select(func.count()).where(*filters)).one()
+        statement = (
+            select(meta.model)
+            .where(*filters)
+            .order_by(meta.model.updated_at.desc(), meta.model.id.desc())
+            .offset((page - 1) * page_size)
+            .limit(page_size)
+        )
+        return session.exec(statement).all(), total
 
-    def update_record(self, session: Session, entity_type: str, entity_id: int, payload: dict[str, str | bool]) -> Any:
+    def update_record(self, session: Session, entity_type: str, entity_id: int, payload: dict[str, str | bool]) -> SQLModel:
         meta = entity_meta(entity_type)
         record = session.get(meta.model, entity_id)
         if record is None:
