@@ -12,6 +12,7 @@ from sqlmodel import Session, select
 from weiren.models import Message, Preference, Quote, Source, TimelineEvent, Trait
 from weiren.services.question_intent_rules import QuestionIntent, QuestionIntentClassifier
 from weiren.utils.fuzzy_utils import FuzzyMatch, best_similarity, rank_similar_texts
+from weiren.services.llm_service import LLMService
 from weiren.utils.text import extract_keywords
 
 
@@ -48,14 +49,21 @@ class QAResponse:
 class QAService:
     def __init__(self) -> None:
         self.classifier = QuestionIntentClassifier()
+        self.llm = LLMService()
 
-    def answer(self, session: Session, question: str, default_subject: str) -> QAResponse:
+    def answer(self, session: Session, question: str, default_subject: str, llm_enabled: bool = False) -> QAResponse:
         intent = self.classifier.classify(question, default_subject=default_subject)
         subject_name = intent.subject_name or default_subject
         handler = getattr(self, f"_handle_{intent.intent}", self._handle_unknown)
         answer, evidence_sources = handler(session, question, subject_name, intent)
         if not evidence_sources and answer != INSUFFICIENT_ANSWER:
             answer = INSUFFICIENT_ANSWER
+
+        if llm_enabled and evidence_sources:
+            llm_answer = self._llm_answer(question, evidence_sources)
+            if llm_answer:
+                answer = llm_answer
+
         return QAResponse(
             question=question,
             intent=intent.intent,
@@ -63,6 +71,17 @@ class QAService:
             evidence=[item.display for item in evidence_sources],
             evidence_sources=evidence_sources,
         )
+
+    def _llm_answer(self, question: str, evidence_sources: list[QAEvidence]) -> Optional[str]:
+        evidence_lines = []
+        for item in evidence_sources[:6]:
+            time_tag = item.occurred_at.strftime("%Y-%m-%d") if item.occurred_at else ""
+            source_info = f"[{item.source_filename}"
+            if time_tag:
+                source_info += f" | {time_tag}"
+            source_info += "]"
+            evidence_lines.append(f"{source_info} {item.content}")
+        return self.llm.answer_from_evidence(question, "\n".join(evidence_lines))
 
     def _handle_unknown(
         self,

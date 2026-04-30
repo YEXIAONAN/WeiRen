@@ -6,7 +6,7 @@ from typing import Optional
 
 from sqlmodel import Session, select
 
-from weiren.models import ChatMessage, ChatSession, Source
+from weiren.models import AppSetting, ChatMessage, ChatSession, Source
 from weiren.services.qa_service import INSUFFICIENT_ANSWER, QAService, QAEvidence
 from weiren.services.search_service import SearchService
 from weiren.utils.text import extract_keywords
@@ -69,7 +69,9 @@ class ChatService:
         ).all()
 
     def answer(self, session: Session, question: str, subject_name: str) -> ChatReply:
-        qa_response = self.qa_service.answer(session, question=question, default_subject=subject_name)
+        setting = session.exec(select(AppSetting)).first()
+        llm_enabled = setting.llm_enabled if setting else False
+        qa_response = self.qa_service.answer(session, question=question, default_subject=subject_name, llm_enabled=llm_enabled)
         if qa_response.answer != INSUFFICIENT_ANSWER and qa_response.evidence_sources:
             evidence = self._build_qa_evidence(session, qa_response.evidence_sources)
             confidence = self._qa_confidence(qa_response.evidence_sources)

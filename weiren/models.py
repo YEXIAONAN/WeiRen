@@ -265,4 +265,5 @@ class AppSetting(SQLModel, table=True):
     mask_phone: bool = Field(default=True, sa_column=Column(Boolean, nullable=False, default=True))
     mask_location: bool = Field(default=True, sa_column=Column(Boolean, nullable=False, default=True))
     mask_social: bool = Field(default=True, sa_column=Column(Boolean, nullable=False, default=True))
+    llm_enabled: bool = Field(default=False, sa_column=Column(Boolean, nullable=False, default=False))
     updated_at: datetime = Field(default_factory=datetime.utcnow, sa_column=Column(DateTime, nullable=False))

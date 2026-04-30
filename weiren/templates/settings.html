@@ -19,13 +19,20 @@
       <label><input type="checkbox" name="mask_location" {% if ui_settings.mask_location %}checked{% endif %}> 隐藏地点</label>
       <label><input type="checkbox" name="mask_social" {% if ui_settings.mask_social %}checked{% endif %}> 隐藏社交账号</label>
     </div>
+
+    <hr class="border-white/10">
+
+    <div class="toggle-list">
+      <label><input type="checkbox" name="llm_enabled" {% if ui_settings.llm_enabled %}checked{% endif %}> 启用 LLM 增强回答</label>
+    </div>
     <button class="button-primary" type="submit">保存设置</button>
   </form>
 
   <div class="panel panel-muted mt-6">
     <p class="section-title">当前行为说明</p>
     <div class="entry-list mt-3">
-      <p class="entry-summary">演示模式开启后，证据片段优先显示摘要与脱敏文本。导出时勾选“脱敏导出”会应用同样规则。</p>
+      <p class=”entry-summary”>演示模式开启后，证据片段优先显示摘要与脱敏文本。导出时勾选”脱敏导出”会应用同样规则。</p>
+      <p class=”entry-summary”>LLM 增强开启后，问答和对话页面会调用本地大模型（gemma4）生成更自然的回答，同时保留证据来源展示。关闭时回退到原有的模板回答。</p>
     </div>
   </div>
 </section>

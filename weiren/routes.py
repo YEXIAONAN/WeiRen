@@ -477,7 +477,8 @@ def qa_submit(
     session: Session = Depends(get_session),
 ) -> object:
     names = subject_names(session)
-    response = qa_service.answer(session, question, default_subject=subject_name)
+    settings = settings_service.get(session)
+    response = qa_service.answer(session, question, default_subject=subject_name, llm_enabled=settings.llm_enabled)
     session.add(
         QARecord(
             subject_name=subject_name,
@@ -680,5 +681,6 @@ async def settings_submit(request: Request, session: Session = Depends(get_sessi
         mask_phone="mask_phone" in form,
         mask_location="mask_location" in form,
         mask_social="mask_social" in form,
+        llm_enabled="llm_enabled" in form,
     )
     return render(request, "settings.html", {"saved": True}, session)

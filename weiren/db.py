@@ -92,6 +92,7 @@ def _migration_ddls() -> list[str]:
     statements.extend(_ensure_columns("preferences", [("category", "TEXT NOT NULL DEFAULT 'general'")]))
     statements.extend(_ensure_columns("quotes", [("tags_json", "TEXT NOT NULL DEFAULT '[]'")]))
     statements.extend(_ensure_columns("search_documents", [("updated_at", "DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00'")]))
+    statements.extend(_ensure_columns("app_settings", [("llm_enabled", "INTEGER NOT NULL DEFAULT 0")]))
     return statements
 
 
